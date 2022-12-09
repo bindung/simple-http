@@ -12,32 +12,6 @@
 #include <sys/epoll.h>
 
 #define EPOLL_SIZE 10000
-struct thread_arg {
-    pthread_t self;
-    int sock;
-    struct sockaddr_in addr;
-};
-
-void echo(int sock, struct sockaddr_in addr) {
-    int nbytes_read;
-    char buffer[BUFSIZ];
-
-    // Does it return only when receive data? So In normal case, read() returns always greater than 0?
-    while ((nbytes_read = read(sock, buffer, BUFSIZ)) > 0) {
-        printf("received %d bytes:\n", nbytes_read);
-        write(STDOUT_FILENO, buffer, nbytes_read);
-        write(sock, buffer, nbytes_read);
-    }
-    printf("Client closed\n");
-    close(sock);
-}
-
-void *thread_main(void *arg) {
-    struct thread_arg *t_arg = (struct thread_arg *)arg;
-    echo(t_arg->sock, t_arg->addr);
-    free(arg);
-    pthread_exit(NULL);
-}
 
 int main(int argc, char **argv) {
     struct protoent *protoent;
@@ -46,7 +20,7 @@ int main(int argc, char **argv) {
     int newline_found = 0;
     int server_sockfd, client_sockfd;
     socklen_t client_len;
-    struct sockaddr_in6 client_address, server_address;
+    struct sockaddr_in client_address, server_address;
     int server_port = 8091;
     char buf[BUFSIZ];
 
@@ -60,7 +34,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    server_sockfd = socket(AF_INET6, SOCK_STREAM, protoent->p_proto);
+    server_sockfd = socket(AF_INET, SOCK_STREAM, protoent->p_proto);
     if (server_sockfd < 0) {
         perror("socket");
         exit(EXIT_FAILURE);
@@ -72,9 +46,9 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    server_address.sin6_family = AF_INET6;
-    server_address.sin6_addr = in6addr_any;
-    server_address.sin6_port = htons(server_port); // Why do it use htons?
+    server_address.sin_family = AF_INET;
+    server_address.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY?
+    server_address.sin_port = htons(server_port); // Why do it use htons?
     if (bind(server_sockfd, (struct sockaddr*)&server_address, sizeof(server_address)) < -1) {
         perror("bind");
         exit(EXIT_FAILURE);
